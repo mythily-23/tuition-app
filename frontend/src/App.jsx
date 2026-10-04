@@ -9,7 +9,7 @@ import Teachers from './pages/Teachers';
 import Reports from './pages/Reports';
 import Navbar from './components/Navbar';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
 
 export const ApiContext = React.createContext();
 
