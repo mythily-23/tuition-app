@@ -64,10 +64,24 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
+// ==================== GRADES ====================
+app.get('/api/grades', authMiddleware, async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM grades ORDER BY level');
+    res.json(result.rows);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
 // ==================== STUDENTS ====================
 app.get('/api/students', authMiddleware, async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM students WHERE is_active = true ORDER BY name');
+    const result = await pool.query(
+      `SELECT s.*, g.name as grade_name FROM students s 
+       LEFT JOIN grades g ON s.grade_id = g.id 
+       WHERE s.is_active = true ORDER BY s.name`
+    );
     res.json(result.rows);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -76,10 +90,10 @@ app.get('/api/students', authMiddleware, async (req, res) => {
 
 app.post('/api/students', authMiddleware, async (req, res) => {
   try {
-    const { name, phone, parent_phone, email, address } = req.body;
+    const { name, grade_id, phone, parent_phone, email, address } = req.body;
     const result = await pool.query(
-      'INSERT INTO students (name, phone, parent_phone, email, address) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [name, phone, parent_phone, email, address]
+      'INSERT INTO students (name, grade_id, phone, parent_phone, email, address) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [name, grade_id, phone, parent_phone, email, address]
     );
     res.json(result.rows[0]);
   } catch (error) {
@@ -89,7 +103,12 @@ app.post('/api/students', authMiddleware, async (req, res) => {
 
 app.get('/api/students/:id', authMiddleware, async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM students WHERE id = $1', [req.params.id]);
+    const result = await pool.query(
+      `SELECT s.*, g.name as grade_name FROM students s 
+       LEFT JOIN grades g ON s.grade_id = g.id 
+       WHERE s.id = $1`,
+      [req.params.id]
+    );
     if (result.rows.length === 0) return res.status(404).json({ error: 'Student not found' });
     res.json(result.rows[0]);
   } catch (error) {
@@ -99,10 +118,10 @@ app.get('/api/students/:id', authMiddleware, async (req, res) => {
 
 app.put('/api/students/:id', authMiddleware, async (req, res) => {
   try {
-    const { name, phone, parent_phone, email, address } = req.body;
+    const { name, grade_id, phone, parent_phone, email, address } = req.body;
     const result = await pool.query(
-      'UPDATE students SET name = $1, phone = $2, parent_phone = $3, email = $4, address = $5 WHERE id = $6 RETURNING *',
-      [name, phone, parent_phone, email, address, req.params.id]
+      'UPDATE students SET name = $1, grade_id = $2, phone = $3, parent_phone = $4, email = $5, address = $6 WHERE id = $7 RETURNING *',
+      [name, grade_id, phone, parent_phone, email, address, req.params.id]
     );
     res.json(result.rows[0]);
   } catch (error) {
@@ -133,13 +152,67 @@ app.post('/api/subjects', authMiddleware, async (req, res) => {
   }
 });
 
+// ==================== SUBJECT GRADES ====================
+app.get('/api/subject-grades', authMiddleware, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT sg.*, s.name as subject_name, g.name as grade_name FROM subject_grades sg
+       JOIN subjects s ON sg.subject_id = s.id
+       JOIN grades g ON sg.grade_id = g.id
+       ORDER BY s.name, g.level`
+    );
+    res.json(result.rows);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.post('/api/subject-grades', authMiddleware, async (req, res) => {
+  try {
+    const { subject_id, grade_id, reference_fee } = req.body;
+    const result = await pool.query(
+      'INSERT INTO subject_grades (subject_id, grade_id, reference_fee) VALUES ($1, $2, $3) RETURNING *',
+      [subject_id, grade_id, reference_fee]
+    );
+    res.json(result.rows[0]);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.delete('/api/subject-grades/:id', authMiddleware, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM subject_grades WHERE id = $1', [req.params.id]);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.get('/api/subject-grades/subject/:subjectId', authMiddleware, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT sg.*, g.name as grade_name FROM subject_grades sg
+       JOIN grades g ON sg.grade_id = g.id
+       WHERE sg.subject_id = $1
+       ORDER BY g.level`,
+      [req.params.subjectId]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
 // ==================== ENROLLMENTS ====================
 app.get('/api/enrollments/student/:studentId', authMiddleware, async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT e.*, s.name as subject_name FROM enrollments e 
+      `SELECT e.*, s.name as subject_name, g.name as grade_name FROM enrollments e 
        JOIN subjects s ON e.subject_id = s.id 
-       WHERE e.student_id = $1 AND e.is_active = true`,
+       JOIN grades g ON e.grade_id = g.id
+       WHERE e.student_id = $1 AND e.is_active = true
+       ORDER BY s.name`,
       [req.params.studentId]
     );
     res.json(result.rows);
@@ -150,10 +223,23 @@ app.get('/api/enrollments/student/:studentId', authMiddleware, async (req, res) 
 
 app.post('/api/enrollments', authMiddleware, async (req, res) => {
   try {
-    const { student_id, subject_id, monthly_fee } = req.body;
+    const { student_id, subject_id, grade_id, monthly_fee } = req.body;
     const result = await pool.query(
-      'INSERT INTO enrollments (student_id, subject_id, monthly_fee) VALUES ($1, $2, $3) RETURNING *',
-      [student_id, subject_id, monthly_fee]
+      'INSERT INTO enrollments (student_id, subject_id, grade_id, monthly_fee) VALUES ($1, $2, $3, $4) RETURNING *',
+      [student_id, subject_id, grade_id, monthly_fee]
+    );
+    res.json(result.rows[0]);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.put('/api/enrollments/:id', authMiddleware, async (req, res) => {
+  try {
+    const { monthly_fee } = req.body;
+    const result = await pool.query(
+      'UPDATE enrollments SET monthly_fee = $1 WHERE id = $2 RETURNING *',
+      [monthly_fee, req.params.id]
     );
     res.json(result.rows[0]);
   } catch (error) {
@@ -222,11 +308,23 @@ app.get('/api/dashboard/stats', authMiddleware, async (req, res) => {
        WHERE EXTRACT(YEAR FROM payment_date) = EXTRACT(YEAR FROM CURRENT_DATE)
        AND EXTRACT(MONTH FROM payment_date) = EXTRACT(MONTH FROM CURRENT_DATE)`
     );
+    const collectionsByGrade = await pool.query(
+      `SELECT g.name as grade_name, COALESCE(SUM(p.amount), 0) as total
+       FROM grades g
+       LEFT JOIN students s ON g.id = s.grade_id AND s.is_active = true
+       LEFT JOIN enrollments e ON s.id = e.student_id AND e.is_active = true
+       LEFT JOIN payments p ON s.id = p.student_id
+       GROUP BY g.id, g.name
+       ORDER BY g.level`
+    );
+    const teachers = await pool.query('SELECT COUNT(*) FROM teachers');
 
     res.json({
       totalStudents: totalStudents.rows[0].count,
+      totalTeachers: teachers.rows[0].count,
       todayCollections: todayCollections.rows[0].total || 0,
-      monthCollections: monthCollections.rows[0].total || 0
+      monthCollections: monthCollections.rows[0].total || 0,
+      collectionsByGrade: collectionsByGrade.rows
     });
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -249,10 +347,10 @@ app.get('/api/teachers', authMiddleware, async (req, res) => {
 
 app.post('/api/teachers', authMiddleware, async (req, res) => {
   try {
-    const { name, subject_id, monthly_salary, phone } = req.body;
+    const { name, subject_id, phone } = req.body;
     const result = await pool.query(
-      'INSERT INTO teachers (name, subject_id, monthly_salary, phone) VALUES ($1, $2, $3, $4) RETURNING *',
-      [name, subject_id, monthly_salary, phone]
+      'INSERT INTO teachers (name, subject_id, phone) VALUES ($1, $2, $3) RETURNING *',
+      [name, subject_id, phone]
     );
     res.json(result.rows[0]);
   } catch (error) {
@@ -262,12 +360,63 @@ app.post('/api/teachers', authMiddleware, async (req, res) => {
 
 app.put('/api/teachers/:id', authMiddleware, async (req, res) => {
   try {
-    const { name, subject_id, monthly_salary, phone } = req.body;
+    const { name, subject_id, phone } = req.body;
     const result = await pool.query(
-      'UPDATE teachers SET name = $1, subject_id = $2, monthly_salary = $3, phone = $4 WHERE id = $5 RETURNING *',
-      [name, subject_id, monthly_salary, phone, req.params.id]
+      'UPDATE teachers SET name = $1, subject_id = $2, phone = $3 WHERE id = $4 RETURNING *',
+      [name, subject_id, phone, req.params.id]
     );
     res.json(result.rows[0]);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// ==================== TEACHER GRADE SALARY ====================
+app.get('/api/teacher-grade-salary/:teacherId', authMiddleware, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT tgs.*, g.name as grade_name FROM teacher_grade_salary tgs
+       JOIN grades g ON tgs.grade_id = g.id
+       WHERE tgs.teacher_id = $1
+       ORDER BY g.level`,
+      [req.params.teacherId]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.post('/api/teacher-grade-salary', authMiddleware, async (req, res) => {
+  try {
+    const { teacher_id, grade_id, monthly_salary } = req.body;
+    const result = await pool.query(
+      'INSERT INTO teacher_grade_salary (teacher_id, grade_id, monthly_salary) VALUES ($1, $2, $3) RETURNING *',
+      [teacher_id, grade_id, monthly_salary]
+    );
+    res.json(result.rows[0]);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.put('/api/teacher-grade-salary/:id', authMiddleware, async (req, res) => {
+  try {
+    const { monthly_salary } = req.body;
+    const result = await pool.query(
+      'UPDATE teacher_grade_salary SET monthly_salary = $1 WHERE id = $2 RETURNING *',
+      [monthly_salary, req.params.id]
+    );
+    res.json(result.rows[0]);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.delete('/api/teacher-grade-salary/:id', authMiddleware, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM teacher_grade_salary WHERE id = $1', [req.params.id]);
+    res.json({ success: true });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -276,20 +425,33 @@ app.put('/api/teachers/:id', authMiddleware, async (req, res) => {
 // ==================== REPORTS ====================
 app.get('/api/reports/pending-fees', authMiddleware, async (req, res) => {
   try {
-    const result = await pool.query(
-      `SELECT 
-        s.id, s.name, s.phone,
-        COALESCE(SUM(e.monthly_fee), 0) as total_monthly_fees,
-        COALESCE(SUM(p.amount), 0) as total_paid,
-        COALESCE(SUM(e.monthly_fee), 0) - COALESCE(SUM(p.amount), 0) as pending_amount
-      FROM students s
-      LEFT JOIN enrollments e ON s.id = e.student_id AND e.is_active = true
-      LEFT JOIN payments p ON s.id = p.student_id
-      WHERE s.is_active = true
-      GROUP BY s.id, s.name, s.phone
+    const { gradeId, subjectId } = req.query;
+    let query = `SELECT 
+      s.id, s.name, s.phone, g.name as grade_name,
+      COALESCE(SUM(e.monthly_fee), 0) as total_monthly_fees,
+      COALESCE(SUM(p.amount), 0) as total_paid,
+      COALESCE(SUM(e.monthly_fee), 0) - COALESCE(SUM(p.amount), 0) as pending_amount
+    FROM students s
+    LEFT JOIN grades g ON s.grade_id = g.id
+    LEFT JOIN enrollments e ON s.id = e.student_id AND e.is_active = true
+    LEFT JOIN payments p ON s.id = p.student_id
+    WHERE s.is_active = true`;
+    
+    const params = [];
+    if (gradeId) {
+      query += ` AND s.grade_id = $${params.length + 1}`;
+      params.push(gradeId);
+    }
+    if (subjectId) {
+      query += ` AND e.subject_id = $${params.length + 1}`;
+      params.push(subjectId);
+    }
+    
+    query += ` GROUP BY s.id, s.name, s.phone, g.name
       HAVING COALESCE(SUM(e.monthly_fee), 0) - COALESCE(SUM(p.amount), 0) > 0
-      ORDER BY pending_amount DESC`
-    );
+      ORDER BY pending_amount DESC`;
+    
+    const result = await pool.query(query, params);
     res.json(result.rows);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -314,12 +476,11 @@ app.get('/api/reports/teacher-payroll', authMiddleware, async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT 
-        t.id, t.name, t.monthly_salary,
-        COUNT(DISTINCT e.student_id) as student_count
+        t.id, t.name, t.subject_id,
+        COALESCE(SUM(tgs.monthly_salary), 0) as total_salary
       FROM teachers t
-      LEFT JOIN subjects s ON t.subject_id = s.id
-      LEFT JOIN enrollments e ON s.id = e.subject_id AND e.is_active = true
-      GROUP BY t.id, t.name, t.monthly_salary
+      LEFT JOIN teacher_grade_salary tgs ON t.id = tgs.teacher_id
+      GROUP BY t.id, t.name, t.subject_id
       ORDER BY t.name`
     );
     res.json(result.rows);

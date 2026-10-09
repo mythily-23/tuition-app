@@ -1,7 +1,7 @@
-import React, { useState, useContext } from 'react';
+import React, { useState } from 'react';
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
 export default function Login({ onLogin }) {
   const [username, setUsername] = useState('');
@@ -29,7 +29,7 @@ export default function Login({ onLogin }) {
         setUsername('');
         setPassword('');
         setName('');
-        setError('Account created! Please login.');
+        setError('✅ Account created! Please login.');
       } else {
         onLogin(response.data.token, response.data.user);
       }
@@ -41,75 +41,91 @@ export default function Login({ onLogin }) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-600 to-blue-800 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
-        <h1 className="text-3xl font-bold text-center mb-8 text-blue-600">📚 Tuition Pro</h1>
+    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-purple-800 to-purple-700 flex items-center justify-center p-4">
+      <div className="bg-white rounded-lg shadow-2xl p-8 w-full max-w-md">
+        <div className="text-center mb-8">
+          <div className="text-5xl mb-3">📚</div>
+          <h1 className="text-4xl font-bold text-gray-900">Tuition Pro</h1>
+          <p className="text-sm text-gray-600 mt-2">Management System</p>
+        </div>
         
         <form onSubmit={handleSubmit} className="space-y-4">
           {isSignup && (
             <div>
-              <label className="block text-sm font-medium mb-1 text-gray-700">Full Name</label>
+              <label className="block text-sm font-medium mb-2 text-gray-700">Full Name</label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="input-field"
-                placeholder="Your name"
+                placeholder="Your full name"
                 required={isSignup}
               />
             </div>
           )}
           
           <div>
-            <label className="block text-sm font-medium mb-1 text-gray-700">Username</label>
+            <label className="block text-sm font-medium mb-2 text-gray-700">Username</label>
             <input
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               className="input-field"
-              placeholder="Enter username"
+              placeholder="Enter your username"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1 text-gray-700">Password</label>
+            <label className="block text-sm font-medium mb-2 text-gray-700">Password</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="input-field"
-              placeholder="Enter password"
+              placeholder="Enter your password"
               required
             />
           </div>
 
-          {error && <p className="text-red-600 text-sm">{error}</p>}
+          {error && (
+            <div className={`text-sm p-3 rounded-lg ${error.includes('✅') ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+              {error}
+            </div>
+          )}
 
           <button 
             type="submit" 
             disabled={loading}
-            className="btn-primary w-full"
+            className="btn-primary w-full text-lg font-semibold py-3"
           >
-            {loading ? 'Loading...' : (isSignup ? 'Create Account' : 'Login')}
+            {loading ? '⏳ Loading...' : (isSignup ? '✨ Create Account' : '🔓 Login')}
           </button>
         </form>
 
         <div className="mt-6 text-center">
+          <p className="text-gray-600 text-sm mb-3">
+            {isSignup ? 'Already have an account?' : "Don't have an account?"}
+          </p>
           <button
             onClick={() => {
               setIsSignup(!isSignup);
               setError('');
+              setName('');
+              setUsername('');
+              setPassword('');
             }}
-            className="text-blue-600 hover:underline text-sm"
+            className="text-purple-600 hover:text-purple-700 font-semibold text-sm"
           >
-            {isSignup ? 'Already have an account? Login' : 'Need an account? Sign up'}
+            {isSignup ? '← Login instead' : 'Sign up here →'}
           </button>
         </div>
 
-        <p className="text-xs text-gray-500 text-center mt-6">
-          Demo credentials: username: demo | password: demo
-        </p>
+        <div className="mt-8 p-4 bg-purple-50 rounded-lg border border-purple-200">
+          <p className="text-xs text-gray-600 font-medium mb-2">💡 Demo Credentials:</p>
+          <p className="text-xs text-gray-700">Username: <span className="font-mono">demo</span></p>
+          <p className="text-xs text-gray-700">Password: <span className="font-mono">demo</span></p>
+        </div>
       </div>
     </div>
   );

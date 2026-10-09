@@ -8,13 +8,26 @@
   box-sizing: border-box;
 }
 
+:root {
+  --purple-50: #f8f6fc;
+  --purple-100: #f0ebf8;
+  --purple-200: #e0d9f1;
+  --purple-300: #c8b8e3;
+  --purple-400: #a892ce;
+  --purple-500: #8b72bd;
+  --purple-600: #6b54a0;
+  --purple-700: #4d3d6f;
+  --purple-800: #3d2f57;
+  --purple-900: #2c1b47;
+}
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #f9fafb;
+  background-color: #f5f3f8;
 }
 
 code {
@@ -24,19 +37,27 @@ code {
 
 @layer components {
   .btn-primary {
-    @apply px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition;
+    @apply px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-medium;
   }
 
   .btn-secondary {
-    @apply px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition;
+    @apply px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition font-medium;
+  }
+
+  .btn-danger {
+    @apply px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-medium;
   }
 
   .input-field {
-    @apply w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500;
+    @apply w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition;
   }
 
   .card {
-    @apply bg-white rounded-lg shadow-md p-6 border border-gray-200;
+    @apply bg-white rounded-lg shadow-sm p-6 border border-gray-100;
+  }
+
+  .stat-card {
+    @apply bg-white rounded-lg shadow-sm p-6 border-l-4 border-gray-100;
   }
 
   .table-container {
@@ -48,14 +69,62 @@ code {
   }
 
   .table th {
-    @apply bg-gray-100 px-6 py-3 text-left text-sm font-semibold text-gray-900 border-b border-gray-300;
+    @apply bg-purple-50 px-6 py-4 text-left text-sm font-semibold text-purple-900 border-b-2 border-purple-200;
   }
 
   .table td {
-    @apply px-6 py-3 border-b border-gray-200 text-sm text-gray-700;
+    @apply px-6 py-4 border-b border-gray-200 text-sm text-gray-700;
   }
 
   .table tr:hover {
-    @apply bg-gray-50;
+    @apply bg-purple-50;
+  }
+
+  .sidebar {
+    @apply fixed left-0 top-0 h-screen bg-gradient-to-b from-purple-900 to-purple-800 w-64 text-white shadow-lg;
+  }
+
+  .sidebar-item {
+    @apply block px-6 py-3 text-white hover:bg-purple-700 transition cursor-pointer;
+  }
+
+  .sidebar-item.active {
+    @apply bg-purple-600 border-l-4 border-white;
+  }
+
+  .main-content {
+    @apply ml-64 p-8;
+  }
+
+  .page-title {
+    @apply text-4xl font-bold text-gray-900 mb-8;
+  }
+
+  .stat-grid {
+    @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8;
+  }
+
+  .stat-card-red {
+    @apply stat-card border-l-red-500;
+  }
+
+  .stat-card-blue {
+    @apply stat-card border-l-blue-500;
+  }
+
+  .stat-card-yellow {
+    @apply stat-card border-l-yellow-500;
+  }
+
+  .stat-card-green {
+    @apply stat-card border-l-green-500;
+  }
+
+  .stat-value {
+    @apply text-3xl font-bold;
+  }
+
+  .stat-label {
+    @apply text-sm text-gray-600 mt-2;
   }
 }

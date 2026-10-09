@@ -9,6 +9,13 @@ const client = new Client({
 });
 
 const createTablesSQL = `
+  -- Grades table (Class 1-12)
+  CREATE TABLE IF NOT EXISTS grades (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(20) NOT NULL UNIQUE,
+    level INT NOT NULL
+  );
+
   -- Subjects table
   CREATE TABLE IF NOT EXISTS subjects (
     id SERIAL PRIMARY KEY,
@@ -16,20 +23,40 @@ const createTablesSQL = `
     description VARCHAR(255)
   );
 
+  -- Subject Grades (subject + grade + reference fee)
+  CREATE TABLE IF NOT EXISTS subject_grades (
+    id SERIAL PRIMARY KEY,
+    subject_id INT NOT NULL REFERENCES subjects(id) ON DELETE CASCADE,
+    grade_id INT NOT NULL REFERENCES grades(id) ON DELETE CASCADE,
+    reference_fee DECIMAL(10, 2) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(subject_id, grade_id)
+  );
+
   -- Teachers table
   CREATE TABLE IF NOT EXISTS teachers (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     subject_id INT REFERENCES subjects(id),
-    monthly_salary DECIMAL(10, 2) NOT NULL,
     phone VARCHAR(15),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  );
+
+  -- Teacher Grade Salary (teacher + grade + salary)
+  CREATE TABLE IF NOT EXISTS teacher_grade_salary (
+    id SERIAL PRIMARY KEY,
+    teacher_id INT NOT NULL REFERENCES teachers(id) ON DELETE CASCADE,
+    grade_id INT NOT NULL REFERENCES grades(id) ON DELETE CASCADE,
+    monthly_salary DECIMAL(10, 2) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(teacher_id, grade_id)
   );
 
   -- Students table
   CREATE TABLE IF NOT EXISTS students (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
+    grade_id INT REFERENCES grades(id),
     phone VARCHAR(15),
     parent_phone VARCHAR(15),
     email VARCHAR(100),
@@ -43,6 +70,7 @@ const createTablesSQL = `
     id SERIAL PRIMARY KEY,
     student_id INT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
     subject_id INT NOT NULL REFERENCES subjects(id),
+    grade_id INT NOT NULL REFERENCES grades(id),
     monthly_fee DECIMAL(10, 2) NOT NULL,
     enrollment_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     is_active BOOLEAN DEFAULT TRUE,
@@ -124,7 +152,17 @@ async function initDB() {
       }
     }
 
+    // Seed default grades (Class 1-12)
+    console.log('Seeding grades...');
+    for (let i = 1; i <= 12; i++) {
+      await client.query(
+        'INSERT INTO grades (name, level) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+        [`Class ${i}`, i]
+      );
+    }
+
     console.log('✅ Database tables created successfully');
+    console.log('✅ Grades seeded (Class 1-12)');
     await client.end();
   } catch (error) {
     console.error('❌ Error initializing database:', error);
