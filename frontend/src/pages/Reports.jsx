@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useCallback } from 'react';
 import { ApiContext } from '../App';
 
 export default function Reports() {
@@ -16,11 +16,7 @@ export default function Reports() {
     subjectId: ''
   });
 
-  useEffect(() => {
-    fetchReports();
-  }, [filters]);
-
-  const fetchReports = async () => {
+  const fetchReports = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -54,7 +50,11 @@ export default function Reports() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [api, filters, grades.length, subjects.length]); ;
+
+  useEffect(() => {
+    fetchReports();
+  }, [fetchReports, filters]);
 
   if (loading) {
     return <div className="flex items-center justify-center h-screen">Loading...</div>;

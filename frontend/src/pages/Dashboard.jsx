@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useCallback} from 'react';
 import { ApiContext } from '../App';
 
 export default function Dashboard() {
@@ -13,11 +13,7 @@ export default function Dashboard() {
   const [pendingFees, setPendingFees] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
-
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     try {
       const statsRes = await api.get('/dashboard/stats');
       setStats(statsRes.data);
@@ -29,7 +25,11 @@ export default function Dashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [api]);
+
+   useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
 
   if (loading) {
     return <div className="flex items-center justify-center h-screen">Loading...</div>;

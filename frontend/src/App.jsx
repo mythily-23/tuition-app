@@ -10,11 +10,31 @@ import Teachers from './pages/Teachers';
 import Reports from './pages/Reports';
 import Sidebar from './components/Sidebar';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
 
-export const ApiContext = React.createContext();
+// Create a single stable Axios instance outside the component render cycle
+export const apiClient = axios.create({
+  baseURL: API_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
 
-function AppContent({ user, onLogout, apiClient }) {
+// Dynamically attach the Authorization token to every request right before it fires
+apiClient.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+export const ApiContext = React.createContext(apiClient);
+
+function AppContent({ user, onLogout }) {
   const location = useLocation();
 
   const menuItems = [
@@ -54,11 +74,11 @@ function App() {
     }
   }, [token]);
 
-  const login = (token, user) => {
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(user));
-    setToken(token);
-    setUser(user);
+  const login = (newToken, newUser) => {
+    localStorage.setItem('token', newToken);
+    localStorage.setItem('user', JSON.stringify(newUser));
+    setToken(newToken);
+    setUser(newUser);
   };
 
   const logout = () => {
@@ -68,11 +88,6 @@ function App() {
     setUser(null);
   };
 
-  const apiClient = axios.create({
-    baseURL: API_URL,
-    headers: token ? { Authorization: `Bearer ${token}` } : {}
-  });
-
   if (!token) {
     return <Login onLogin={login} />;
   }
@@ -80,7 +95,7 @@ function App() {
   return (
     <ApiContext.Provider value={apiClient}>
       <BrowserRouter>
-        <AppContent user={user} onLogout={logout} apiClient={apiClient} />
+        <AppContent user={user} onLogout={logout} />
       </BrowserRouter>
     </ApiContext.Provider>
   );

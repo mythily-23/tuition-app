@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useCallback } from 'react';
 import { ApiContext } from '../App';
 
 export default function Students() {
@@ -26,11 +26,7 @@ export default function Students() {
     monthly_fee: ''
   });
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const studentsRes = await api.get('/students');
       setStudents(studentsRes.data);
@@ -45,7 +41,11 @@ export default function Students() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [api]);
+
+    useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleAddStudent = async (e) => {
     e.preventDefault();

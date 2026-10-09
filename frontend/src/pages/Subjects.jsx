@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext , useCallback} from 'react';
 import { ApiContext } from '../App';
 
 export default function Subjects() {
@@ -21,11 +21,7 @@ export default function Subjects() {
     reference_fee: ''
   });
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
+  const fetchData = useCallback (async () => {
     try {
       const subjectsRes = await api.get('/subjects');
       setSubjects(subjectsRes.data);
@@ -40,7 +36,11 @@ export default function Subjects() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [api]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleAddSubject = async (e) => {
     e.preventDefault();

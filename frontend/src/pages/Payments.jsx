@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useCallback } from 'react';
 import { ApiContext } from '../App';
 
 export default function Payments() {
@@ -19,11 +19,7 @@ export default function Payments() {
     notes: ''
   });
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const paymentsRes = await api.get('/payments');
       setPayments(paymentsRes.data);
@@ -35,7 +31,11 @@ export default function Payments() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [api]);
+
+    useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleSelectStudent = async (studentId) => {
     const student = students.find(s => s.id === parseInt(studentId));
