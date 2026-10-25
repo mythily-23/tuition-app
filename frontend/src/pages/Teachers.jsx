@@ -35,7 +35,7 @@ export default function Teachers() {
       const gradesRes = await api.get('/grades');
       setGrades(gradesRes.data);
     } catch (error) {
-      console.error('Error fetching data:', error);
+      console.error('Error fetching data:', error.response?.data || error.message);
     } finally {
       setLoading(false);
     }

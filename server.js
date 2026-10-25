@@ -87,7 +87,8 @@ app.get('/api/students', authMiddleware, async (req, res) => {
     const result = await pool.query(
       `SELECT s.*, g.name as grade_name FROM students s 
        LEFT JOIN grades g ON s.grade_id = g.id 
-       WHERE s.is_active = true ORDER BY s.name`
+       WHERE s.is_active = true AND s.admin_user_id = $1 ORDER BY s.name`,
+      [req.userId]
     );
     res.json(result.rows);
   } catch (error) {
@@ -99,8 +100,8 @@ app.post('/api/students', authMiddleware, async (req, res) => {
   try {
     const { name, grade_id, phone, parent_phone, email, address } = req.body;
     const result = await pool.query(
-      'INSERT INTO students (name, grade_id, phone, parent_phone, email, address) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-      [name, grade_id, phone, parent_phone, email, address]
+      'INSERT INTO students (admin_user_id, name, grade_id, phone, parent_phone, email, address) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+      [req.userId, name, grade_id, phone, parent_phone, email, address]
     );
     res.json(result.rows[0]);
   } catch (error) {
@@ -139,7 +140,10 @@ app.put('/api/students/:id', authMiddleware, async (req, res) => {
 // ==================== SUBJECTS ====================
 app.get('/api/subjects', authMiddleware, async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM subjects ORDER BY name');
+    const result = await pool.query(
+      'SELECT * FROM subjects WHERE admin_user_id = $1 ORDER BY name',
+      [req.userId]
+    );
     res.json(result.rows);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -150,8 +154,8 @@ app.post('/api/subjects', authMiddleware, async (req, res) => {
   try {
     const { name, description } = req.body;
     const result = await pool.query(
-      'INSERT INTO subjects (name, description) VALUES ($1, $2) RETURNING *',
-      [name, description]
+      'INSERT INTO subjects (admin_user_id, name, description) VALUES ($1, $2, $3) RETURNING *',
+      [req.userId, name, description]
     );
     res.json(result.rows[0]);
   } catch (error) {
@@ -269,7 +273,9 @@ app.get('/api/payments', authMiddleware, async (req, res) => {
     const result = await pool.query(
       `SELECT p.*, s.name as student_name FROM payments p 
        JOIN students s ON p.student_id = s.id 
-       ORDER BY p.payment_date DESC LIMIT 100`
+       WHERE p.admin_user_id = $1
+       ORDER BY p.payment_date DESC LIMIT 100`,
+      [req.userId]
     );
     res.json(result.rows);
   } catch (error) {
@@ -281,9 +287,9 @@ app.post('/api/payments', authMiddleware, async (req, res) => {
   try {
     const { student_id, amount, payment_date, payment_method, months_covered, notes } = req.body;
     const result = await pool.query(
-      `INSERT INTO payments (student_id, amount, payment_date, payment_method, months_covered, notes) 
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [student_id, amount, payment_date, payment_method, months_covered || 1, notes]
+      `INSERT INTO payments (admin_user_id, student_id, amount, payment_date, payment_method, months_covered, notes) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      [req.userId, student_id, amount, payment_date, payment_method, months_covered || 1, notes]
     );
     res.json(result.rows[0]);
   } catch (error) {
@@ -306,25 +312,35 @@ app.get('/api/payments/student/:studentId', authMiddleware, async (req, res) => 
 // ==================== DASHBOARD STATS ====================
 app.get('/api/dashboard/stats', authMiddleware, async (req, res) => {
   try {
-    const totalStudents = await pool.query('SELECT COUNT(*) FROM students WHERE is_active = true');
+    const totalStudents = await pool.query(
+      'SELECT COUNT(*) FROM students WHERE is_active = true AND admin_user_id = $1',
+      [req.userId]
+    );
     const todayCollections = await pool.query(
-      "SELECT SUM(amount) as total FROM payments WHERE payment_date = CURRENT_DATE"
+      "SELECT SUM(amount) as total FROM payments WHERE payment_date = CURRENT_DATE AND admin_user_id = $1",
+      [req.userId]
     );
     const monthCollections = await pool.query(
       `SELECT SUM(amount) as total FROM payments 
        WHERE EXTRACT(YEAR FROM payment_date) = EXTRACT(YEAR FROM CURRENT_DATE)
-       AND EXTRACT(MONTH FROM payment_date) = EXTRACT(MONTH FROM CURRENT_DATE)`
+       AND EXTRACT(MONTH FROM payment_date) = EXTRACT(MONTH FROM CURRENT_DATE)
+       AND admin_user_id = $1`,
+      [req.userId]
     );
     const collectionsByGrade = await pool.query(
       `SELECT g.name as grade_name, COALESCE(SUM(p.amount), 0) as total
        FROM grades g
-       LEFT JOIN students s ON g.id = s.grade_id AND s.is_active = true
+       LEFT JOIN students s ON g.id = s.grade_id AND s.is_active = true AND s.admin_user_id = $1
        LEFT JOIN enrollments e ON s.id = e.student_id AND e.is_active = true
-       LEFT JOIN payments p ON s.id = p.student_id
+       LEFT JOIN payments p ON s.id = p.student_id AND p.admin_user_id = $1
        GROUP BY g.id, g.name
-       ORDER BY g.level`
+       ORDER BY g.level`,
+      [req.userId]
     );
-    const teachers = await pool.query('SELECT COUNT(*) FROM teachers');
+    const teachers = await pool.query(
+      'SELECT COUNT(*) FROM teachers WHERE admin_user_id = $1',
+      [req.userId]
+    );
 
     res.json({
       totalStudents: totalStudents.rows[0].count,
@@ -344,7 +360,9 @@ app.get('/api/teachers', authMiddleware, async (req, res) => {
     const result = await pool.query(
       `SELECT t.*, s.name as subject_name FROM teachers t 
        LEFT JOIN subjects s ON t.subject_id = s.id 
-       ORDER BY t.name`
+       WHERE t.admin_user_id = $1
+       ORDER BY t.name`,
+      [req.userId]
     );
     res.json(result.rows);
   } catch (error) {
@@ -356,8 +374,8 @@ app.post('/api/teachers', authMiddleware, async (req, res) => {
   try {
     const { name, subject_id, phone } = req.body;
     const result = await pool.query(
-      'INSERT INTO teachers (name, subject_id, phone) VALUES ($1, $2, $3) RETURNING *',
-      [name, subject_id, phone]
+      'INSERT INTO teachers (admin_user_id, name, subject_id, phone) VALUES ($1, $2, $3, $4) RETURNING *',
+      [req.userId, name, subject_id, phone]
     );
     res.json(result.rows[0]);
   } catch (error) {
@@ -442,9 +460,9 @@ app.get('/api/reports/pending-fees', authMiddleware, async (req, res) => {
     LEFT JOIN grades g ON s.grade_id = g.id
     LEFT JOIN enrollments e ON s.id = e.student_id AND e.is_active = true
     LEFT JOIN payments p ON s.id = p.student_id
-    WHERE s.is_active = true`;
+    WHERE s.is_active = true AND s.admin_user_id = $1`;
     
-    const params = [];
+    const params = [req.userId];
     if (gradeId) {
       query += ` AND s.grade_id = $${params.length + 1}`;
       params.push(gradeId);
@@ -470,8 +488,10 @@ app.get('/api/reports/monthly-collection', authMiddleware, async (req, res) => {
     const result = await pool.query(
       `SELECT DATE_TRUNC('month', payment_date) as month, SUM(amount) as total
        FROM payments
+       WHERE admin_user_id = $1
        GROUP BY DATE_TRUNC('month', payment_date)
-       ORDER BY month DESC LIMIT 12`
+       ORDER BY month DESC LIMIT 12`,
+      [req.userId]
     );
     res.json(result.rows);
   } catch (error) {
@@ -487,8 +507,10 @@ app.get('/api/reports/teacher-payroll', authMiddleware, async (req, res) => {
         COALESCE(SUM(tgs.monthly_salary), 0) as total_salary
       FROM teachers t
       LEFT JOIN teacher_grade_salary tgs ON t.id = tgs.teacher_id
+      WHERE t.admin_user_id = $1
       GROUP BY t.id, t.name, t.subject_id
-      ORDER BY t.name`
+      ORDER BY t.name`,
+      [req.userId]
     );
     res.json(result.rows);
   } catch (error) {

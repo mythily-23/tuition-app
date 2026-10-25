@@ -357,3 +357,5 @@ For issues or questions:
 MIT - Free to use and modify
 
 ---
+
+**Built with ❤️ for your tuition center**

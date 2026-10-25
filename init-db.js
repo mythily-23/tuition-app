@@ -9,6 +9,15 @@ const client = new Client({
 });
 
 const createTablesSQL = `
+   -- Admin user
+   CREATE TABLE IF NOT EXISTS admin_users (
+     id SERIAL PRIMARY KEY,
+     username VARCHAR(50) UNIQUE NOT NULL,
+     password VARCHAR(255) NOT NULL,
+     name VARCHAR(100),
+     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+   );
+   
   -- Grades table (Class 1-12)
   CREATE TABLE IF NOT EXISTS grades (
     id SERIAL PRIMARY KEY,
@@ -19,8 +28,11 @@ const createTablesSQL = `
   -- Subjects table
   CREATE TABLE IF NOT EXISTS subjects (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(50) NOT NULL UNIQUE,
-    description VARCHAR(255)
+    admin_user_id INT NOT NULL REFERENCES admin_users(id) ON DELETE CASCADE,
+    name VARCHAR(50) NOT NULL,
+    description VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(admin_user_id, name)
   );
 
   -- Subject Grades (subject + grade + reference fee)
@@ -36,6 +48,7 @@ const createTablesSQL = `
   -- Teachers table
   CREATE TABLE IF NOT EXISTS teachers (
     id SERIAL PRIMARY KEY,
+    admin_user_id INT NOT NULL REFERENCES admin_users(id) ON DELETE CASCADE,
     name VARCHAR(100) NOT NULL,
     subject_id INT REFERENCES subjects(id),
     phone VARCHAR(15),
@@ -55,6 +68,7 @@ const createTablesSQL = `
   -- Students table
   CREATE TABLE IF NOT EXISTS students (
     id SERIAL PRIMARY KEY,
+    admin_user_id INT NOT NULL REFERENCES admin_users(id) ON DELETE CASCADE,
     name VARCHAR(100) NOT NULL,
     grade_id INT REFERENCES grades(id),
     phone VARCHAR(15),
@@ -80,6 +94,7 @@ const createTablesSQL = `
   -- Payments table
   CREATE TABLE IF NOT EXISTS payments (
     id SERIAL PRIMARY KEY,
+    admin_user_id INT NOT NULL REFERENCES admin_users(id) ON DELETE CASCADE,
     student_id INT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
     amount DECIMAL(10, 2) NOT NULL,
     payment_date DATE NOT NULL,
@@ -123,14 +138,6 @@ const createTablesSQL = `
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   );
 
-  -- Admin user
-  CREATE TABLE IF NOT EXISTS admin_users (
-    id SERIAL PRIMARY KEY,
-    username VARCHAR(50) UNIQUE NOT NULL,
-    password VARCHAR(255) NOT NULL,
-    name VARCHAR(100),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-  );
 
   -- Create indexes
   CREATE INDEX IF NOT EXISTS idx_student_name ON students(name);

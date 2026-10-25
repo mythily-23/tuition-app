@@ -146,9 +146,13 @@ export default function Students() {
                   required
                 >
                   <option value="">Select Grade</option>
-                  {grades.map(g => (
-                    <option key={g.id} value={g.id}>{g.name}</option>
-                  ))}
+                  {grades && grades.length > 0 ? (
+                    grades.map(g => (
+                      <option key={g.id} value={g.id}>{g.name}</option>
+                    ))
+                  ) : (
+                    <option disabled>No grades available</option>
+                  )}
                 </select>
               </div>
               <div>

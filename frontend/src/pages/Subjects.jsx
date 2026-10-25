@@ -21,7 +21,7 @@ export default function Subjects() {
     reference_fee: ''
   });
 
-  const fetchData = useCallback (async () => {
+  const fetchData = async () => {
     try {
       const subjectsRes = await api.get('/subjects');
       setSubjects(subjectsRes.data);
@@ -32,11 +32,14 @@ export default function Subjects() {
       const sgRes = await api.get('/subject-grades');
       setSubjectGrades(sgRes.data);
     } catch (error) {
-      console.error('Error fetching data:', error);
+      // 🔍 Log the server's specific error payload
+      console.error('Error fetching data:', error.response?.data || error);
     } finally {
       setLoading(false);
     }
-  }, [api]);
+  };
+
+  
 
   useEffect(() => {
     fetchData();
@@ -50,7 +53,9 @@ export default function Subjects() {
       setShowAddSubject(false);
       fetchData();
     } catch (error) {
-      alert('Error adding subject: ' + error.message);
+      // 🔍 Log the server's specific error payload here too
+      console.error('Error adding subject:', error.response?.data || error);
+      alert('Error adding subject: ' + (error.response?.data?.message || error.message));
     }
   };
 

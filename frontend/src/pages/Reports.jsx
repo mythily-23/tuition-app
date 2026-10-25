@@ -116,10 +116,14 @@ export default function Reports() {
                   onChange={(e) => setFilters({...filters, gradeId: e.target.value})}
                   className="input-field"
                 >
-                  <option value="">All Grades</option>
-                  {grades.map(g => (
-                    <option key={g.id} value={g.id}>{g.name}</option>
-                  ))}
+                  <option value="">📚 All Grades</option>
+                  {grades && grades.length > 0 ? (
+                    grades.map(g => (
+                      <option key={g.id} value={g.id}>{g.name}</option>
+                    ))
+                  ) : (
+                    <option disabled>No grades available</option>
+                  )}
                 </select>
               </div>
               <div>
@@ -129,10 +133,14 @@ export default function Reports() {
                   onChange={(e) => setFilters({...filters, subjectId: e.target.value})}
                   className="input-field"
                 >
-                  <option value="">All Subjects</option>
-                  {subjects.map(s => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
+                  <option value="">📖 All Subjects</option>
+                  {subjects && subjects.length > 0 ? (
+                    subjects.map(s => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))
+                  ) : (
+                    <option disabled>No subjects available</option>
+                  )}
                 </select>
               </div>
               <div className="flex items-end">
