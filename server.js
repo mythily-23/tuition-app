@@ -518,6 +518,102 @@ app.get('/api/reports/teacher-payroll', authMiddleware, async (req, res) => {
   }
 });
 
+// ==================== DELETE ROUTES (scoped to logged-in user) ====================
+
+app.delete('/api/students/:id', authMiddleware, async (req, res) => {
+  try {
+    // Enrollments and payments for this student are removed automatically (ON DELETE CASCADE)
+    const result = await pool.query(
+      'DELETE FROM students WHERE id = $1 AND admin_user_id = $2 RETURNING id',
+      [req.params.id, req.userId]
+    );
+    if (result.rowCount === 0) return res.status(404).json({ error: 'Student not found' });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.delete('/api/subjects/:id', authMiddleware, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const owned = await client.query(
+      'SELECT id FROM subjects WHERE id = $1 AND admin_user_id = $2',
+      [req.params.id, req.userId]
+    );
+    if (owned.rowCount === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Subject not found' });
+    }
+
+    // Only block when a student is actively enrolled
+    const active = await client.query(
+      'SELECT COUNT(*) FROM enrollments WHERE subject_id = $1 AND is_active = true',
+      [req.params.id]
+    );
+    if (parseInt(active.rows[0].count) > 0) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({
+        error: 'Some students are still enrolled in this subject. Remove it from those students first.'
+      });
+    }
+
+    // Clear leftover (soft-deleted) enrollments that still point to this subject
+    await client.query('DELETE FROM enrollments WHERE subject_id = $1', [req.params.id]);
+
+    // Teachers stay in the system; they just lose this subject
+    await client.query(
+      'UPDATE teachers SET subject_id = NULL WHERE subject_id = $1 AND admin_user_id = $2',
+      [req.params.id, req.userId]
+    );
+
+    // subject_grades rows are removed automatically (ON DELETE CASCADE)
+    await client.query(
+      'DELETE FROM subjects WHERE id = $1 AND admin_user_id = $2',
+      [req.params.id, req.userId]
+    );
+
+    await client.query('COMMIT');
+    res.json({ success: true });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    res.status(400).json({ error: error.message });
+  } finally {
+    client.release();
+  }
+});
+
+app.delete('/api/teachers/:id', authMiddleware, async (req, res) => {
+  try {
+    const result = await pool.query(
+      'DELETE FROM teachers WHERE id = $1 AND admin_user_id = $2 RETURNING id',
+      [req.params.id, req.userId]
+    );
+    if (result.rowCount === 0) return res.status(404).json({ error: 'Teacher not found' });
+    res.json({ success: true });
+  } catch (error) {
+    if (error.code === '23503') {
+      return res.status(409).json({ error: 'This teacher has salary payment records and cannot be deleted.' });
+    }
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.delete('/api/payments/:id', authMiddleware, async (req, res) => {
+  try {
+    const result = await pool.query(
+      'DELETE FROM payments WHERE id = $1 AND admin_user_id = $2 RETURNING id',
+      [req.params.id, req.userId]
+    );
+    if (result.rowCount === 0) return res.status(404).json({ error: 'Payment not found' });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK' });

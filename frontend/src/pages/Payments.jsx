@@ -103,6 +103,16 @@ Payment ID: #${response.data.id}
     }
   };
 
+  const handleDeletePayment = async (payment) => {
+  if (!window.confirm(`Delete this payment of ₹${payment.amount} from ${payment.student_name}?`)) return;
+  try {
+    await api.delete(`/payments/${payment.id}`);
+    fetchData();
+  } catch (error) {
+    alert('Error deleting payment: ' + (error.response?.data?.error || error.message));
+  }
+};
+
   if (loading) {
     return <div className="flex items-center justify-center h-screen">Loading...</div>;
   }
@@ -256,12 +266,13 @@ Payment ID: #${response.data.id}
                 <th>Method</th>
                 <th>Months</th>
                 <th>Notes</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {payments.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="text-center text-gray-500 py-8">No payments recorded yet</td>
+                  <td colSpan="7" className="text-center text-gray-500 py-8">No payments recorded yet</td>
                 </tr>
               ) : (
                 payments.map(payment => (
@@ -272,6 +283,14 @@ Payment ID: #${response.data.id}
                     <td className="capitalize text-gray-600">{payment.payment_method}</td>
                     <td className="text-gray-600">{payment.months_covered}</td>
                     <td className="text-gray-500 text-sm">{payment.notes || '-'}</td>
+                    <td>
+                      <button
+                        onClick={() => handleDeletePayment(payment)}
+                        className="text-red-600 hover:text-red-800 text-sm font-medium bg-red-50 px-3 py-1 rounded"
+                      >
+                        Delete
+                      </button>
+                    </td>
                   </tr>
                 ))
               )}

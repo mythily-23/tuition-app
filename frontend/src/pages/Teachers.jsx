@@ -99,12 +99,25 @@ export default function Teachers() {
       }
     }
   };
+  const handleDeleteTeacher = async (teacher) => {
+  if (!window.confirm(`Delete teacher ${teacher.name}? Their grade salaries will also be deleted.`)) return;
+  try {
+    await api.delete(`/teachers/${teacher.id}`);
+    if (selectedTeacher?.id === teacher.id) {
+      setSelectedTeacher(null);
+      setTeacherSalaries([]);
+    }
+    fetchData();
+  } catch (error) {
+    alert(error.response?.data?.error || error.message);
+  }
+};
 
   if (loading) {
     return <div className="flex items-center justify-center h-screen">Loading...</div>;
   }
 
-  const totalMonthlySalary = teacherSalaries.reduce((sum, s) => sum + (s.monthly_salary || 0), 0);
+  const totalMonthlySalary = teacherSalaries.reduce((sum, s) => sum + parseFloat((s.monthly_salary || 0)), 0);
 
   return (
     <div>
@@ -191,9 +204,15 @@ export default function Teachers() {
             <div 
               key={teacher.id}
               onClick={() => handleSelectTeacher(teacher)}
-              className={`card cursor-pointer transition hover:shadow-lg ${selectedTeacher?.id === teacher.id ? 'ring-2 ring-purple-600 bg-purple-50' : ''}`}
+              className={`card relative cursor-pointer transition hover:shadow-lg ${selectedTeacher?.id === teacher.id ? 'ring-2 ring-purple-600 bg-purple-50' : ''}`}
             >
               <h3 className="text-lg font-bold text-gray-900">{teacher.name}</h3>
+              <button
+                onClick={(e) => { e.stopPropagation(); handleDeleteTeacher(teacher); }}
+                className="absolute top-3 right-3 text-red-600 hover:text-red-800 text-sm font-medium bg-red-50 px-3 py-1 rounded"
+              >
+                Delete
+              </button>
               <p className="text-sm text-purple-600 font-medium mt-1">📚 {teacher.subject_name || 'No Subject'}</p>
               <p className="text-sm text-gray-600 mt-2">📱 {teacher.phone || 'N/A'}</p>
               {selectedTeacher?.id === teacher.id && (

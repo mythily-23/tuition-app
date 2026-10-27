@@ -104,6 +104,20 @@ export default function Students() {
     }
   };
 
+  const handleDeleteStudent = async (student) => {
+  if (!window.confirm(`Delete ${student.name}? Their subjects and payment history will also be deleted.`)) return;
+  try {
+    await api.delete(`/students/${student.id}`);
+    if (selectedStudent?.id === student.id) {
+      setSelectedStudent(null);
+      setEnrollments([]);
+    }
+    fetchData();
+  } catch (error) {
+    alert('Error deleting student: ' + (error.response?.data?.error || error.message));
+  }
+};
+
   if (loading) {
     return <div className="flex items-center justify-center h-screen">Loading...</div>;
   }
@@ -218,15 +232,21 @@ export default function Students() {
           </div>
         ) : (
           students.map(student => (
-            <div 
+            <div
               key={student.id}
               onClick={() => handleSelectStudent(student)}
-              className={`card cursor-pointer transition hover:shadow-lg ${selectedStudent?.id === student.id ? 'ring-2 ring-purple-600' : ''}`}
+              className={`card relative cursor-pointer transition hover:shadow-lg ${selectedStudent?.id === student.id ? 'ring-2 ring-purple-600' : ''}`}
             >
               <h3 className="text-lg font-bold text-gray-900">{student.name}</h3>
               <p className="text-sm text-purple-600 font-medium mt-1">{student.grade_name || 'No Grade'}</p>
               <p className="text-sm text-gray-600 mt-2">📱 {student.phone || '-'}</p>
               <p className="text-sm text-gray-600">👨‍👩‍👧 {student.parent_phone || '-'}</p>
+              <button
+                  onClick={(e) => { e.stopPropagation(); handleDeleteStudent(student); }}
+                  className="absolute top-3 right-3 text-red-600 hover:text-red-800 text-sm font-medium bg-red-50 px-3 py-1 rounded"
+                >
+                  Delete
+              </button>
             </div>
           ))
         )}
@@ -321,7 +341,6 @@ export default function Students() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {enrollments.map(enrollment => {
-                const totalFees = enrollments.reduce((sum, e) => sum + (e.monthly_fee || 0), 0);
                 return (
                   <div key={enrollment.id} className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-4 border border-purple-200">
                     <div className="flex justify-between items-start">
@@ -330,7 +349,7 @@ export default function Students() {
                         <p className="text-2xl font-bold text-purple-600 mt-2">₹{(enrollment.monthly_fee || 0).toLocaleString()}</p>
                         <p className="text-xs text-gray-600 mt-1">per month</p>
                       </div>
-                      <button 
+                      <button
                         onClick={() => handleDeleteEnrollment(enrollment.id)}
                         className="text-red-600 hover:text-red-800 font-medium text-sm bg-red-50 px-3 py-1 rounded"
                       >
@@ -347,7 +366,7 @@ export default function Students() {
             <div className="mt-6 pt-6 border-t border-gray-200 bg-green-50 rounded-lg p-4">
               <p className="text-sm text-gray-600">Total Monthly Fees:</p>
               <p className="text-3xl font-bold text-green-600 mt-1">
-                ₹{enrollments.reduce((sum, e) => sum + (e.monthly_fee || 0), 0).toLocaleString()}
+                ₹{enrollments.reduce((sum, e) => sum + parseFloat((e.monthly_fee || 0)), 0).toLocaleString()}
               </p>
               <p className="text-xs text-gray-600 mt-2">Across {enrollments.length} subject{enrollments.length !== 1 ? 's' : ''}</p>
             </div>

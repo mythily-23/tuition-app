@@ -21,25 +21,23 @@ export default function Subjects() {
     reference_fee: ''
   });
 
-  const fetchData = async () => {
-    try {
-      const subjectsRes = await api.get('/subjects');
-      setSubjects(subjectsRes.data);
+  const fetchData = useCallback(async () => {
+  try {
+    const subjectsRes = await api.get('/subjects');
+    setSubjects(subjectsRes.data);
 
-      const gradesRes = await api.get('/grades');
-      setGrades(gradesRes.data);
+    const gradesRes = await api.get('/grades');
+    setGrades(gradesRes.data);
 
-      const sgRes = await api.get('/subject-grades');
-      setSubjectGrades(sgRes.data);
-    } catch (error) {
-      // 🔍 Log the server's specific error payload
-      console.error('Error fetching data:', error.response?.data || error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  
+    const sgRes = await api.get('/subject-grades');
+    setSubjectGrades(sgRes.data);
+  } catch (error) {
+    // 🔍 Log the server's specific error payload
+    console.error('Error fetching data:', error.response?.data || error);
+  } finally {
+    setLoading(false);
+  }
+}, [api]);
 
   useEffect(() => {
     fetchData();
@@ -85,6 +83,15 @@ export default function Subjects() {
       }
     }
   };
+  const handleDeleteSubject = async (subject) => {
+  if (!window.confirm(`Delete subject "${subject.name}" and its grade fees?`)) return;
+  try {
+    await api.delete(`/subjects/${subject.id}`);
+    fetchData();
+  } catch (error) {
+    alert(error.response?.data?.error || error.message);
+  }
+};
 
   if (loading) {
     return <div className="flex items-center justify-center h-screen">Loading...</div>;
@@ -213,11 +220,17 @@ export default function Subjects() {
           subjects.map(subject => {
             const subjectGradesList = subjectGrades.filter(sg => sg.subject_id === subject.id);
             return (
-              <div key={subject.id} className="card border-l-4 border-l-purple-600 hover:shadow-lg transition">
+              <div key={subject.id} className="card relative border-l-4 border-l-purple-600 hover:shadow-lg transition">
                 <h3 className="text-2xl font-bold text-gray-900 mb-2">📖 {subject.name}</h3>
                 {subject.description && (
                   <p className="text-sm text-gray-600 mb-4 italic">{subject.description}</p>
                 )}
+                 <button
+              onClick={() => handleDeleteSubject(subject)}
+              className="absolute top-3 right-3 text-red-600 hover:text-red-800 text-sm font-medium bg-red-50 px-3 py-1 rounded"
+            >
+              Delete Subject
+            </button>
                 
                 <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-4 border border-purple-200">
                   {subjectGradesList.length === 0 ? (
