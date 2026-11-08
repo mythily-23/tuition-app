@@ -9,11 +9,21 @@ dotenv.config();
 const { Pool } = pkg;
 
 const app = express();
+const allowedOrigins = [
+  'http://localhost:3000',
+  process.env.FRONTEND_URL, // your Railway frontend URL, set in Railway variables
+].filter(Boolean);
+
 app.use(cors({
-  origin: 'http://localhost:3000',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
+  origin: (origin, callback) => {
+    // Allow requests with no origin (such as curl or Railway health checks)
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
 }));
 app.options('*', cors());
 app.use(express.json());
