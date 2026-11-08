@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import pkg from 'pg';
 import dotenv from 'dotenv';
-import bcryptjs from 'bcryptjs';
+import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
 dotenv.config();
@@ -86,7 +86,7 @@ app.post('/api/auth/login', async (req, res) => {
     if (result.rows.length === 0) return res.status(401).json({ error: 'User not found' });
     
     const user = result.rows[0];
-    const validPassword = await bcryptjs.compare(password, user.password);
+    const validPassword = await bcrypt.compare(password, user.password);
     if (!validPassword) return res.status(401).json({ error: 'Invalid password' });
     
     const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '30d' });
