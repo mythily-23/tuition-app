@@ -52,15 +52,30 @@ const authMiddleware = (req, res, next) => {
 // ==================== AUTH ====================
 app.post('/api/auth/register', async (req, res) => {
   try {
-    const { username, password, name } = req.body;
-    const hashedPassword = await bcryptjs.hash(password, 10);
+    const { username, password, name } = req.body || {};
+
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username and password are required' });
+    }
+
+    const existing = await pool.query(
+      'SELECT id FROM admin_users WHERE username = $1',
+      [username]
+    );
+    if (existing.rowCount > 0) {
+      return res.status(400).json({ error: 'Username already exists' });
+    }
+
+    const hashed = await bcrypt.hash(password, 10);
     const result = await pool.query(
       'INSERT INTO admin_users (username, password, name) VALUES ($1, $2, $3) RETURNING id, username, name',
-      [username, hashedPassword, name]
+      [username, hashed, name || username]
     );
-    res.json({ user: result.rows[0] });
+
+    res.json({ success: true, user: result.rows[0] });
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    console.error('Register error:', error);
+    res.status(500).json({ error: error.message || 'Server error while creating account' });
   }
 });
 
