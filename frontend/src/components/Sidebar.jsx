@@ -1,47 +1,56 @@
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 
 export default function Sidebar({ menuItems, currentPath, user, onLogout }) {
-  const navigate = useNavigate();
-
-  const handleLogout = () => {
-    onLogout();
-    navigate('/');
-  };
+  const isActive = (path) => currentPath === path;
 
   return (
-    <div className="sidebar">
-      <div className="p-6 border-b border-purple-700">
-        <div className="text-2xl font-bold mb-2">📚</div>
-        <h1 className="text-xl font-bold">Tuition Pro</h1>
-        <p className="text-xs text-purple-300 mt-1">Management System</p>
-      </div>
+    <>
+      {/* Desktop sidebar (hidden on phones) */}
+      <aside className="app-sidebar">
+        <div className="sidebar-brand">
+          <div className="text-3xl">📚</div>
+          <div className="sidebar-brand-name">Tuition Pro</div>
+        </div>
 
-      <nav className="mt-6">
+        <nav className="sidebar-nav">
+          {menuItems.map((item) => (
+            <Link
+              key={item.path}
+              to={item.path}
+              className={`sidebar-link ${isActive(item.path) ? 'active' : ''}`}
+            >
+              <span className="sidebar-icon">{item.icon}</span>
+              <span>{item.label}</span>
+            </Link>
+          ))}
+        </nav>
+
+        <div className="sidebar-footer">
+          <div className="sidebar-user">{user?.name || user?.username}</div>
+          <button onClick={onLogout} className="sidebar-logout">Logout</button>
+        </div>
+      </aside>
+
+      {/* Phone top bar (hidden on desktop) */}
+      <header className="mobile-topbar">
+        <div className="mobile-topbar-title">📚 Tuition Pro</div>
+        <button onClick={onLogout} className="mobile-logout">Logout</button>
+      </header>
+
+      {/* Phone bottom navigation (hidden on desktop) */}
+      <nav className="mobile-bottom-nav">
         {menuItems.map((item) => (
           <Link
             key={item.path}
             to={item.path}
-            className={`sidebar-item ${currentPath === item.path ? 'active' : ''}`}
+            className={`mobile-nav-link ${isActive(item.path) ? 'active' : ''}`}
           >
-            <span className="mr-3">{item.icon}</span>
-            {item.label}
+            <span className="mobile-nav-icon">{item.icon}</span>
+            <span className="mobile-nav-label">{item.label}</span>
           </Link>
         ))}
       </nav>
-
-      <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-purple-700">
-        <div className="mb-4 pb-4 border-b border-purple-700">
-          <p className="text-xs text-purple-300">Logged in as</p>
-          <p className="text-sm font-medium">{user?.name || 'Admin'}</p>
-        </div>
-        <button
-          onClick={handleLogout}
-          className="w-full px-4 py-2 bg-red-600 hover:bg-red-700 rounded text-white text-sm font-medium transition"
-        >
-          Logout
-        </button>
-      </div>
-    </div>
+    </>
   );
 }
